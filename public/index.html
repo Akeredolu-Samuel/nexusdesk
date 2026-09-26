@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NEXUS DESK</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect fill='%23050a06' width='64' height='64'/><text x='10' y='44' font-size='28' fill='%237CFF6B' font-family='monospace'>NX</text></svg>" />
+</head>
+<body>
+  <div id="boot" class="boot">
+    <div class="boot-inner">
+      <div class="boot-mark">NXS</div>
+      <h1 class="boot-title">NEXUS DESK</h1>
+      <div class="boot-pct" id="boot-pct">00%</div>
+      <div class="boot-bar"><div class="boot-fill" id="boot-fill"></div></div>
+      <ul class="boot-log" id="boot-log"></ul>
+    </div>
+  </div>
+
+  <header class="top">
+    <div class="brand">
+      <span class="mark">NXS</span>
+      <span class="name">NEXUS DESK</span>
+    </div>
+    <div class="clock" id="clock">--:--:--</div>
+    <span class="utc">UTC</span>
+    <div class="ticker" id="ticker"></div>
+    <span class="live" id="live-pill">LIVE</span>
+    <button class="icon-btn" id="settings-btn" type="button" title="Keys">⚙</button>
+  </header>
+
+  <main class="shell">
+    <section class="wire">
+      <div class="col-h">
+        <h2>WIRE</h2>
+        <input id="news-search" type="search" placeholder="Filter headlines" />
+        <span class="meta" id="news-meta"></span>
+      </div>
+      <div class="news-list" id="news-list"></div>
+    </section>
+
+    <section class="analog">
+      <div class="col-h">
+        <h2>ANALOG</h2>
+        <span class="meta" id="analog-conf">pick a headline</span>
+      </div>
+      <div id="analog-body" class="analog-body">
+        <p class="empty">Select a headline. The desk shows what used to move, and what might move now.</p>
+      </div>
+    </section>
+  </main>
+
+  <aside class="desk" id="desk">
+    <div class="ask-log" id="ask-log"></div>
+    <form class="cmd" id="ask-form">
+      <span class="prompt" id="ai-pill">ASK</span>
+      <input id="ask-input" autocomplete="off" placeholder="Which pair usually leads on a hot CPI print?" />
+    </form>
+  </aside>
+
+  <div class="modal" id="settings" hidden>
+    <div class="modal-card">
+      <h3>KEYS</h3>
+      <p>Stored only in <code>.env</code> on this machine.</p>
+      <label>CryptoPanic
+        <input id="cp-key" type="password" placeholder="already loaded if set" />
+      </label>
+      <label>DeepSeek
+        <input id="ds-key" type="password" placeholder="sk-..." />
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="settings-cancel">CLOSE</button>
+        <button type="button" class="primary" id="settings-save">SAVE</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
