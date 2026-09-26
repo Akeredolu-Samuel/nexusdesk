@@ -29,4 +29,15 @@ DEEPSEEK_API_KEY=
 
 Or paste keys in **SETTINGS** (⚙). Never commit `.env`.
 
+## Deploy (Vercel)
+
+This is a Node/Express app, not a static GitHub Pages site. The live URL is a **serverless function**.
+
+In the Vercel project → **Settings → Environment Variables** add:
+
+- `CRYPTOPANIC_TOKEN`
+- `DEEPSEEK_API_KEY`
+
+Then redeploy. Settings ⚙ on the site cannot persist keys on Vercel (read-only disk).
+
 CryptoPanic’s old free `developer` path is gone. If the token’s plan is Growth / Growth weekly / Enterprise, the desk uses it. Otherwise it falls back to Cointelegraph, CoinDesk, Decrypt, and The Block so the wire still prints.

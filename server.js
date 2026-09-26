@@ -1,15 +1,23 @@
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
-const { Agent } = require("undici");
 const { classifyNews, detectCoins, stripHtml } = require("./playbook");
 
-const ipv4Agent = new Agent({
-  connections: 10,
-  connect: { timeout: 12_000, family: 4 },
-  headersTimeout: 45_000,
-  bodyTimeout: 120_000
-});
+const ON_VERCEL = Boolean(process.env.VERCEL);
+let ipv4Agent = undefined;
+if (!ON_VERCEL) {
+  try {
+    const { Agent } = require("undici");
+    ipv4Agent = new Agent({
+      connections: 10,
+      connect: { timeout: 12_000, family: 4 },
+      headersTimeout: 45_000,
+      bodyTimeout: 120_000
+    });
+  } catch {
+    ipv4Agent = undefined;
+  }
+}
 
 const ROOT = __dirname;
 loadEnv(path.join(ROOT, ".env"));
@@ -157,9 +165,10 @@ app.post("/api/ask", async (req, res) => {
   });
 
   let lastErr = "";
-  for (let i = 0; i < 3; i++) {
+  const tries = ON_VERCEL ? 1 : 3;
+  for (let i = 0; i < tries; i++) {
     try {
-      const upstream = await fetch("https://api.deepseek.com/chat/completions", {
+      const dsInit = {
         method: "POST",
         headers: {
           Authorization: `Bearer ${key}`,
@@ -167,9 +176,10 @@ app.post("/api/ask", async (req, res) => {
           Accept: "text/event-stream",
           "User-Agent": UA
         },
-        body,
-        dispatcher: ipv4Agent
-      });
+        body
+      };
+      if (ipv4Agent) dsInit.dispatcher = ipv4Agent;
+      const upstream = await fetch("https://api.deepseek.com/chat/completions", dsInit);
 
       if (!upstream.ok) {
         const text = await upstream.text();
@@ -230,7 +240,7 @@ app.post("/api/settings", (req, res) => {
     process.env.CRYPTOPANIC_TOKEN = req.body.cryptopanicToken.trim();
     next.CRYPTOPANIC_TOKEN = process.env.CRYPTOPANIC_TOKEN;
   }
-  persistEnv(next);
+  if (!ON_VERCEL) persistEnv(next);
   cache.news.at = 0;
   res.json({
     ok: true,
@@ -239,9 +249,13 @@ app.post("/api/settings", (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`NEXUS DESK  http://localhost:${PORT}`);
-});
+if (!ON_VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`NEXUS DESK  http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
 
 function loadEnv(file) {
   if (!fs.existsSync(file)) return;
@@ -290,7 +304,8 @@ async function getNews(force) {
   let originDetail = "";
 
   const token = process.env.CRYPTOPANIC_TOKEN;
-  if (token) {
+  const rssPromise = fetchAllRss();
+  if (token && !ON_VERCEL) {
     for (const make of CRYPTOPANIC_PATHS) {
       const url = make(encodeURIComponent(token));
       try {
@@ -324,10 +339,12 @@ async function getNews(force) {
   }
 
   if (!items.length) {
-    const rssItems = await fetchAllRss();
+    const rssItems = await rssPromise;
     items = rssItems;
     origin = items.length ? "WIRE" : "EMPTY";
-    originDetail = "cryptopanic plan path unavailable; using public news wires";
+    originDetail = ON_VERCEL
+      ? "vercel wire"
+      : "cryptopanic plan path unavailable; using public news wires";
   }
 
   items.sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
@@ -373,7 +390,7 @@ async function fetchAllRss() {
     RSS_WIRES.map(async (wire) => {
       try {
         const r = await outbound(wire.url, {
-          timeoutMs: 10_000,
+          timeoutMs: ON_VERCEL ? 4_000 : 10_000,
           headers: { Accept: "application/rss+xml, application/xml, text/xml, */*" }
         });
         if (!r.ok) return [];
@@ -423,7 +440,7 @@ async function getTape() {
     const ids = TAPE_COINS.map((c) => c.id).join(",");
     const r = await outbound(
       `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h`,
-      { timeoutMs: 12_000, headers: { Accept: "application/json" } }
+      { timeoutMs: ON_VERCEL ? 6_000 : 12_000, headers: { Accept: "application/json" } }
     );
     if (!r.ok) throw new Error(`tape ${r.status}`);
     const all = await r.json();
@@ -452,13 +469,14 @@ async function outbound(url, opts = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs || 12_000);
   try {
-    return await fetch(url, {
+    const init = {
       method: opts.method || "GET",
       headers: { "User-Agent": UA, ...(opts.headers || {}) },
       body: opts.body,
-      signal: ctrl.signal,
-      dispatcher: ipv4Agent
-    });
+      signal: ctrl.signal
+    };
+    if (ipv4Agent) init.dispatcher = ipv4Agent;
+    return await fetch(url, init);
   } finally {
     clearTimeout(timer);
   }
